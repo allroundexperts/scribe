@@ -147,7 +147,6 @@ defmodule SocialScribe.Accounts do
   def get_user_linkedin_credential(user) do
     Repo.get_by(UserCredential, user_id: user.id, provider: "linkedin")
   end
-
   @doc """
   Gets a user credential by user, provider, and uid.
 
@@ -310,10 +309,31 @@ defmodule SocialScribe.Accounts do
   end
 
   @doc """
+  Finds or creates a Salesforce credential for a user.
+  Salesforce uses a single credential per organization_id (account).
+  """
+  def find_or_create_salesforce_credential(user, attrs) do
+    case get_user_credential(user, "salesforce", attrs.uid) do
+      nil ->
+        create_user_credential(attrs)
+
+      %UserCredential{} = credential ->
+        update_user_credential(credential, attrs)
+    end
+  end
+
+  @doc """
   Gets the user's HubSpot credential if one exists.
   """
   def get_user_hubspot_credential(user_id) do
     Repo.get_by(UserCredential, user_id: user_id, provider: "hubspot")
+  end
+
+  @doc """
+  Gets the user's Salesforce credential if one exists.
+  """
+  def get_user_salesforce_credential(user_id) do
+    Repo.get_by(UserCredential, user_id: user_id, provider: "salesforce")
   end
 
   defp get_user_by_oauth_uid(provider, uid) do
@@ -346,6 +366,20 @@ defmodule SocialScribe.Accounts do
       uid: auth.uid,
       token: auth.credentials.token,
       refresh_token: auth.credentials.token,
+      expires_at:
+        (auth.credentials.expires_at && DateTime.from_unix!(auth.credentials.expires_at)) ||
+          DateTime.add(DateTime.utc_now(), 3600, :second),
+      email: auth.info.email
+    }
+  end
+
+  defp format_credential_attrs(user, %Auth{provider: :salesforce} = auth) do
+    %{
+      user_id: user.id,
+      provider: to_string(auth.provider),
+      uid: auth.uid,
+      token: auth.credentials.token,
+      refresh_token: auth.credentials.refresh_token,
       expires_at:
         (auth.credentials.expires_at && DateTime.from_unix!(auth.credentials.expires_at)) ||
           DateTime.add(DateTime.utc_now(), 3600, :second),
