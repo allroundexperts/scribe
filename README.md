@@ -132,6 +132,8 @@ Follow these steps to get SocialScribe running on your local machine.
         * `SALESFORCE_CLIENT_ID`: Your Salesforce Connected App Consumer Key.
         * `SALESFORCE_CLIENT_SECRET`: Your Salesforce Connected App Consumer Secret.
         * `SALESFORCE_REDIRECT_URI`: `"http://localhost:4000/auth/salesforce/callback"`
+        * `SALESFORCE_INSTANCE_URL`: Your Salesforce instance URL. 
+        * `SALESFORCE_API_VERSION`: Salesforce API version to use. Defaults to `"v60.0"` if not specified.
 
 4.  **Start the Phoenix Server:**
     ```bash
@@ -186,6 +188,36 @@ Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
     * Timestamp link
 * **Selective Updates:** Checkbox per field allows selective updates; "Update HubSpot" button disabled until at least one field selected
 * **Form Submission:** Batch-updates selected contact properties via `HubspotApi.update_contact`
+* **Click-away Handler:** Closes dropdown without clearing selection
+
+---
+
+## 🔗 Salesforce Integration
+
+### Salesforce OAuth Integration
+
+* **Custom Ueberauth Strategy:** Implemented in `lib/ueberauth/strategy/salesforce.ex`
+* **OAuth 2.0 Flow with PKCE:** Handles authorization code flow with PKCE (Proof Key for Code Exchange) for enhanced security using Salesforce's `/services/oauth2/authorize` and `/services/oauth2/token` endpoints
+* **Credential Storage:** Credentials stored in `user_credentials` table with `provider: "salesforce"`, including `token`, `refresh_token`, `instance_url`, and `expires_at`
+* **Token Refresh:**
+    * `SalesforceTokenRefresher` Oban cron worker runs every 5 minutes to proactively refresh tokens expiring within 10 minutes
+    * Internal `with_token_refresh/2` wrapper automatically refreshes expired tokens on API calls and retries the request
+    * Uses `https://login.salesforce.com` for token refresh endpoint, following Salesforce best practices
+    * Refresh failures are logged; users are prompted to re-authenticate if refresh token is invalid
+
+### Salesforce Modal UI
+
+* **LiveView Component:** Located at `lib/social_scribe_web/live/meeting_live/salesforce_modal_component.ex`
+* **Contact Search:** Debounced input triggers Salesforce REST API search using SOSL, results displayed in dropdown
+* **AI Suggestions:** Fetched via `SalesforceSuggestions.generate_suggestions` which calls Gemini with transcript context
+* **Suggestion Cards:** Each card displays:
+    * Field label
+    * Current value (strikethrough)
+    * Arrow
+    * Suggested value
+    * Timestamp link to transcript
+* **Selective Updates:** Checkbox per field allows selective updates; "Update Salesforce" button disabled until at least one field selected
+* **Form Submission:** Batch-updates selected contact fields via `SalesforceApi.update_contact`
 * **Click-away Handler:** Closes dropdown without clearing selection
 
 ---

@@ -4,6 +4,8 @@ defmodule SocialScribe.SalesforceApi do
   Provides functions for interacting with Salesforce REST API.
   """
 
+  @behaviour SocialScribe.SalesforceApiBehaviour
+
   require Logger
   alias SocialScribe.Accounts.UserCredential
   alias SocialScribe.SalesforceTokenRefresher
@@ -15,132 +17,6 @@ defmodule SocialScribe.SalesforceApi do
 
   defp salesforce_api_version do
     System.get_env("SALESFORCE_API_VERSION") || "v60.0"
-  end
-
-  @doc """
-  Gets basic user info from Salesforce.
-  """
-  def get_user_info(%UserCredential{} = credential) do
-    with_token_refresh(credential, fn cred ->
-      url = "#{get_instance_url(cred)}/services/data/#{salesforce_api_version()}/sobjects/User/#{cred.uid}"
-
-      headers = [
-        {"Authorization", "Bearer #{cred.token}"},
-        {"Content-Type", "application/json"}
-      ]
-
-      case Tesla.get(http_client(), url, headers: headers) do
-        {:ok, %Tesla.Env{status: 200, body: body}} ->
-          {:ok, body}
-
-        {:ok, %Tesla.Env{status: 401, body: body}} ->
-          {:error, {:api_error, 401, body}}
-
-        {:ok, %Tesla.Env{status: status, body: body}} ->
-          Logger.error("Failed to get Salesforce user info: #{status} - #{inspect(body)}")
-          {:error, {:api_error, status, body}}
-
-        {:error, reason} ->
-          Logger.error("HTTP error getting Salesforce user info: #{inspect(reason)}")
-          {:error, {:http_error, reason}}
-      end
-    end)
-  end
-
-  @doc """
-  Gets accounts from Salesforce.
-  """
-  def get_accounts(%UserCredential{} = credential, limit \\ 50) do
-    with_token_refresh(credential, fn cred ->
-      url = "#{get_instance_url(cred)}/services/data/#{salesforce_api_version()}/query"
-      query = "SELECT Id, Name, Type, Industry, Phone, Website FROM Account LIMIT #{limit}"
-
-      headers = [
-        {"Authorization", "Bearer #{cred.token}"},
-        {"Content-Type", "application/json"}
-      ]
-
-      params = [q: query]
-
-      case Tesla.get(http_client(), url, query: params, headers: headers) do
-        {:ok, %Tesla.Env{status: 200, body: %{"records" => records}}} ->
-          {:ok, records}
-
-        {:ok, %Tesla.Env{status: 401, body: body}} ->
-          {:error, {:api_error, 401, body}}
-
-        {:ok, %Tesla.Env{status: status, body: body}} ->
-          Logger.error("Failed to get Salesforce accounts: #{status} - #{inspect(body)}")
-          {:error, {:api_error, status, body}}
-
-        {:error, reason} ->
-          Logger.error("HTTP error getting Salesforce accounts: #{inspect(reason)}")
-          {:error, {:http_error, reason}}
-      end
-    end)
-  end
-
-  @doc """
-  Gets contacts from Salesforce.
-  """
-  def get_contacts(%UserCredential{} = credential, limit \\ 50) do
-    with_token_refresh(credential, fn cred ->
-      url = "#{get_instance_url(cred)}/services/data/#{salesforce_api_version()}/query"
-      query = "SELECT Id, Name, Email, Phone, Title, Account.Name FROM Contact LIMIT #{limit}"
-
-      headers = [
-        {"Authorization", "Bearer #{cred.token}"},
-        {"Content-Type", "application/json"}
-      ]
-
-      params = [q: query]
-
-      case Tesla.get(http_client(), url, query: params, headers: headers) do
-        {:ok, %Tesla.Env{status: 200, body: %{"records" => records}}} ->
-          {:ok, records}
-
-        {:ok, %Tesla.Env{status: 401, body: body}} ->
-          {:error, {:api_error, 401, body}}
-
-        {:ok, %Tesla.Env{status: status, body: body}} ->
-          Logger.error("Failed to get Salesforce contacts: #{status} - #{inspect(body)}")
-          {:error, {:api_error, status, body}}
-
-        {:error, reason} ->
-          Logger.error("HTTP error getting Salesforce contacts: #{inspect(reason)}")
-          {:error, {:http_error, reason}}
-      end
-    end)
-  end
-
-  @doc """
-  Creates a new contact in Salesforce.
-  """
-  def create_contact(%UserCredential{} = credential, contact_data) do
-    with_token_refresh(credential, fn cred ->
-      url = "#{get_instance_url(cred)}/services/data/#{salesforce_api_version()}/sobjects/Contact"
-
-      headers = [
-        {"Authorization", "Bearer #{cred.token}"},
-        {"Content-Type", "application/json"}
-      ]
-
-      case Tesla.post(http_client(), url, contact_data, headers: headers) do
-        {:ok, %Tesla.Env{status: 201, body: body}} ->
-          {:ok, body}
-
-        {:ok, %Tesla.Env{status: 401, body: body}} ->
-          {:error, {:api_error, 401, body}}
-
-        {:ok, %Tesla.Env{status: status, body: body}} ->
-          Logger.error("Failed to create Salesforce contact: #{status} - #{inspect(body)}")
-          {:error, {:api_error, status, body}}
-
-        {:error, reason} ->
-          Logger.error("HTTP error creating Salesforce contact: #{inspect(reason)}")
-          {:error, {:http_error, reason}}
-      end
-    end)
   end
 
   @doc """
@@ -262,6 +138,26 @@ defmodule SocialScribe.SalesforceApi do
           {:error, {:http_error, reason}}
       end
     end)
+  end
+
+  @doc """
+  Batch updates multiple properties on a contact.
+  This is a convenience wrapper around update_contact/3.
+  """
+  def apply_updates(%UserCredential{} = credential, contact_id, updates_list)
+      when is_list(updates_list) do
+    updates_map =
+      updates_list
+      |> Enum.filter(fn update -> update[:apply] == true end)
+      |> Enum.reduce(%{}, fn update, acc ->
+        Map.put(acc, update.field, update.new_value)
+      end)
+
+    if map_size(updates_map) > 0 do
+      update_contact(credential, contact_id, updates_map)
+    else
+      {:ok, :no_updates}
+    end
   end
 
   # Format contact data from Salesforce API response

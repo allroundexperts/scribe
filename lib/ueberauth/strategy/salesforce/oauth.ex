@@ -86,6 +86,8 @@ defmodule Ueberauth.Strategy.Salesforce.OAuth do
     end
   end
 
+  @spec get_user_info(OAuth2.AccessToken.t()) ::
+          {:error, OAuth2.Response.t()} | {:ok, binary() | list() | map()}
   @doc """
   Fetches user info from Salesforce using the identity URL.
   """
