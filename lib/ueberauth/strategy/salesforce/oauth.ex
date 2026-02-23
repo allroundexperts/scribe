@@ -66,8 +66,14 @@ defmodule Ueberauth.Strategy.Salesforce.OAuth do
     Logger.info("Client Secret configured: #{if client_secret, do: "YES", else: "MISSING"}")
 
     case client(opts) |> OAuth2.Client.get_token(params) do
-      {:ok, %OAuth2.Client{token: %OAuth2.AccessToken{} = token}} ->
+      {:ok, %OAuth2.Client{token: %OAuth2.AccessToken{} = token, params: raw_params}} ->
         Logger.info("Salesforce token exchange successful")
+        Logger.info("Salesforce token returned: #{inspect(token)}")
+        Logger.info("Salesforce token raw_params: #{inspect(raw_params)}")
+        # Ensure instance_url is present in token.other_params for downstream use
+        instance_url = raw_params["instance_url"] || token.other_params["instance_url"]
+        new_other_params = Map.put(token.other_params, "instance_url", instance_url)
+        token = %OAuth2.AccessToken{token | other_params: new_other_params}
         {:ok, token}
 
       {:error, %OAuth2.Response{body: body} = response} ->

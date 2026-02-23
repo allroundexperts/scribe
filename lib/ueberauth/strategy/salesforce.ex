@@ -88,16 +88,21 @@ defmodule Ueberauth.Strategy.Salesforce do
   Includes the credentials from the Salesforce response.
   """
   def credentials(conn) do
+    require Logger
     token = conn.private.salesforce_token
+    Logger.info("Salesforce strategy credentials - token.other_params: #{inspect(token.other_params)}")
 
-    %Credentials{
+    creds = %Credentials{
       expires: true,
       expires_at: token.expires_at,
       scopes: String.split(token.other_params["scope"] || "", " "),
       token: token.access_token,
       refresh_token: token.refresh_token,
-      token_type: token.token_type
+      token_type: token.token_type,
+      other: token.other_params
     }
+    Logger.info("Salesforce strategy credentials - built: #{inspect(creds)}")
+    creds
   end
 
   @doc """

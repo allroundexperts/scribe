@@ -153,7 +153,8 @@ defmodule SocialScribeWeb.AuthController do
       expires_at:
         (auth.credentials.expires_at && DateTime.from_unix!(auth.credentials.expires_at)) ||
           DateTime.add(DateTime.utc_now(), 3600, :second),
-      email: auth.info.email
+      email: auth.info.email,
+      metadata: %{"instance_url" => auth.credentials.other && auth.credentials.other["instance_url"]}
     }
 
     case Accounts.find_or_create_salesforce_credential(user, credential_attrs) do

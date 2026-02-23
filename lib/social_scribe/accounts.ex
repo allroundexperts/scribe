@@ -324,16 +324,50 @@ defmodule SocialScribe.Accounts do
 
   @doc """
   Gets the user's HubSpot credential if one exists.
+  Returns the most recently updated credential if multiple exist.
   """
   def get_user_hubspot_credential(user_id) do
-    Repo.get_by(UserCredential, user_id: user_id, provider: "hubspot")
+    from(c in UserCredential,
+      where: c.user_id == ^user_id and c.provider == "hubspot",
+      order_by: [desc: c.updated_at],
+      limit: 1
+    )
+    |> Repo.one()
   end
 
   @doc """
   Gets the user's Salesforce credential if one exists.
+  Returns the most recently updated credential if multiple exist.
   """
   def get_user_salesforce_credential(user_id) do
-    Repo.get_by(UserCredential, user_id: user_id, provider: "salesforce")
+    from(c in UserCredential,
+      where: c.user_id == ^user_id and c.provider == "salesforce",
+      order_by: [desc: c.updated_at],
+      limit: 1
+    )
+    |> Repo.one()
+  end
+
+  @doc """
+  Gets all Salesforce credentials for a user.
+  """
+  def list_user_salesforce_credentials(user_id) do
+    from(c in UserCredential,
+      where: c.user_id == ^user_id and c.provider == "salesforce",
+      order_by: [desc: c.updated_at]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Gets all HubSpot credentials for a user.
+  """
+  def list_user_hubspot_credentials(user_id) do
+    from(c in UserCredential,
+      where: c.user_id == ^user_id and c.provider == "hubspot",
+      order_by: [desc: c.updated_at]
+    )
+    |> Repo.all()
   end
 
   defp get_user_by_oauth_uid(provider, uid) do
@@ -374,6 +408,12 @@ defmodule SocialScribe.Accounts do
   end
 
   defp format_credential_attrs(user, %Auth{provider: :salesforce} = auth) do
+    require Logger
+    Logger.info("format_credential_attrs Salesforce - auth.credentials: #{inspect(auth.credentials)}")
+    Logger.info("format_credential_attrs Salesforce - auth.credentials.other: #{inspect(auth.credentials.other)}")
+    instance_url = auth.credentials.other && auth.credentials.other["instance_url"]
+    Logger.info("format_credential_attrs Salesforce - extracted instance_url: #{inspect(instance_url)}")
+
     %{
       user_id: user.id,
       provider: to_string(auth.provider),
@@ -383,7 +423,8 @@ defmodule SocialScribe.Accounts do
       expires_at:
         (auth.credentials.expires_at && DateTime.from_unix!(auth.credentials.expires_at)) ||
           DateTime.add(DateTime.utc_now(), 3600, :second),
-      email: auth.info.email
+      email: auth.info.email,
+      metadata: %{"instance_url" => instance_url}
     }
   end
 

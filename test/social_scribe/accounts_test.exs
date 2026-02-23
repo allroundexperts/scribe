@@ -550,6 +550,68 @@ defmodule SocialScribe.AccountsTest do
       assert length(hubspot_credentials) == 1
       assert hd(hubspot_credentials).id == hubspot_credential.id
     end
+
+    test "get_user_hubspot_credential/1 returns one credential when multiple exist" do
+      user = user_fixture()
+
+      # Create two credentials for the same user
+      credential1 = hubspot_credential_fixture(%{user_id: user.id, uid: "hub_123", token: "token1"})
+      credential2 = hubspot_credential_fixture(%{user_id: user.id, uid: "hub_456", token: "token2"})
+
+      # Should return exactly one credential (doesn't matter which one for this test)
+      found_credential = Accounts.get_user_hubspot_credential(user.id)
+
+      assert found_credential != nil
+      assert found_credential.provider == "hubspot"
+      assert found_credential.user_id == user.id
+      # Should be one of the two we created
+      assert found_credential.id in [credential1.id, credential2.id]
+    end
+
+    test "list_user_hubspot_credentials/1 returns all hubspot credentials for user" do
+      user = user_fixture()
+
+      credential1 = hubspot_credential_fixture(%{user_id: user.id, uid: "hub_123"})
+      credential2 = hubspot_credential_fixture(%{user_id: user.id, uid: "hub_456"})
+
+      credentials = Accounts.list_user_hubspot_credentials(user.id)
+
+      assert length(credentials) == 2
+      credential_ids = Enum.map(credentials, & &1.id)
+      assert credential1.id in credential_ids
+      assert credential2.id in credential_ids
+    end
+
+    test "get_user_salesforce_credential/1 returns one credential when multiple exist" do
+      user = user_fixture()
+
+      # Create two credentials for the same user
+      credential1 = salesforce_credential_fixture(%{user_id: user.id, uid: "sf_123", token: "token1"})
+      credential2 = salesforce_credential_fixture(%{user_id: user.id, uid: "sf_456", token: "token2"})
+
+      # Should return exactly one credential (doesn't matter which one for this test)
+      found_credential = Accounts.get_user_salesforce_credential(user.id)
+
+      assert found_credential != nil
+      assert found_credential.provider == "salesforce"
+      assert found_credential.user_id == user.id
+      # Should be one of the two we created
+      assert found_credential.id in [credential1.id, credential2.id]
+    end
+
+    test "list_user_salesforce_credentials/1 returns all salesforce credentials for user" do
+      user = user_fixture()
+
+      credential1 = salesforce_credential_fixture(%{user_id: user.id, uid: "sf_123"})
+      credential2 = salesforce_credential_fixture(%{user_id: user.id, uid: "sf_456"})
+
+      credentials = Accounts.list_user_salesforce_credentials(user.id)
+
+      assert length(credentials) == 2
+      credential_ids = Enum.map(credentials, & &1.id)
+      assert credential1.id in credential_ids
+      assert credential2.id in credential_ids
+    end
   end
 
   describe "facebook_page_credentials" do

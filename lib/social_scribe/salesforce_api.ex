@@ -10,13 +10,9 @@ defmodule SocialScribe.SalesforceApi do
   alias SocialScribe.Accounts.UserCredential
   alias SocialScribe.SalesforceTokenRefresher
 
-  # Configuration from environment variables
-  defp salesforce_instance_url do
-    System.get_env("SALESFORCE_INSTANCE_URL") || "https://login.salesforce.com"
-  end
-
+  # Salesforce API version (optional, defaults to v60.0)
   defp salesforce_api_version do
-    System.get_env("SALESFORCE_API_VERSION") || "v60.0"
+    "v60.0"
   end
 
   @doc """
@@ -182,9 +178,10 @@ defmodule SocialScribe.SalesforceApi do
 
   # Private functions
 
-  defp get_instance_url(%UserCredential{} = _credential) do
-    salesforce_instance_url()
+  defp get_instance_url(%UserCredential{metadata: %{"instance_url" => url}}) when is_binary(url) and byte_size(url) > 0 do
+    url
   end
+  defp get_instance_url(%UserCredential{}), do: raise "Salesforce instance_url missing from credential metadata!"
 
   defp http_client do
     Tesla.client([

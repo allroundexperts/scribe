@@ -60,10 +60,18 @@ defmodule SocialScribe.SalesforceTokenRefresher do
 
     case refresh_token(credential.refresh_token) do
       {:ok, response} ->
+        # Merge/replace instance_url in metadata if present
+        new_metadata =
+          case response["instance_url"] do
+            nil -> credential.metadata || %{}
+            url -> Map.put(credential.metadata || %{}, "instance_url", url)
+          end
+
         attrs = %{
           token: response["access_token"],
           refresh_token: response["refresh_token"] || credential.refresh_token,
-          expires_at: DateTime.add(DateTime.utc_now(), response["expires_in"] || 3600, :second)
+          expires_at: DateTime.add(DateTime.utc_now(), response["expires_in"] || 3600, :second),
+          metadata: new_metadata
         }
 
         case Accounts.update_user_credential(credential, attrs) do
