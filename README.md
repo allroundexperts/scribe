@@ -134,7 +134,6 @@ Follow these steps to get SocialScribe running on your local machine.
         * `SALESFORCE_CLIENT_ID`: Your Salesforce Connected App Consumer Key.
         * `SALESFORCE_CLIENT_SECRET`: Your Salesforce Connected App Consumer Secret.
         * `SALESFORCE_REDIRECT_URI`: `"http://localhost:4000/auth/salesforce/callback"`
-        * `SALESFORCE_INSTANCE_URL`: Your Salesforce instance URL. 
         * `SALESFORCE_API_VERSION`: Salesforce API version to use. Defaults to `"v60.0"` if not specified.
 
 4.  **Start the Phoenix Server:**
