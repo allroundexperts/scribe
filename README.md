@@ -101,6 +101,8 @@ Follow these steps to get SocialScribe running on your local machine.
     ```
 
 2.  **Install Dependencies & Setup Database:**
+    > **Note:** This assumes that the database is already running. Database connection details are specified in the configuration profile. See `config/*.exs`for the expected database settings.
+    
     The `mix setup` command bundles common setup tasks.
     ```bash
     mix setup
